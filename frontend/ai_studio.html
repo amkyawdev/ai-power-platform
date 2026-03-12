@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Studio | OneHand AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --secondary: #7b2cbf;
+            --accent: #ff006e;
+            --dark: #0a0a0f;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .neon-border {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 15px rgba(0, 240, 255, 0.05);
+        }
+        
+        .glow-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transition: all 0.3s ease;
+        }
+        
+        .glow-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px var(--primary);
+        }
+        
+        .tool-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+        }
+        
+        .tool-tab {
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tool-tab:hover, .tool-tab.active {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(123, 44, 191, 0.2));
+            border: 1px solid var(--primary);
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 200px);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: 16px;
+        }
+        
+        .user .message-content {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(123, 44, 191, 0.2));
+        }
+        
+        .ai .message-content {
+            background: var(--glass);
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-btn:hover {
+            background: var(--primary);
+            color: black;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: var(--glass);
+            border-radius: 20px;
+            padding: 8px;
+        }
+        
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 12px 16px;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .input-wrapper button {
+            padding: 12px 24px;
+            border-radius: 16px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .image-result {
+            border-radius: 16px;
+            overflow: hidden;
+            max-width: 500px;
+        }
+        
+        .image-result img {
+            width: 100%;
+            height: auto;
+        }
+        
+        .prompt-type-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .prompt-type-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background: var(--glass);
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .prompt-type-btn.active {
+            border-color: var(--primary);
+            background: rgba(0, 240, 255, 0.1);
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 80px;
+            background: rgba(10, 10, 15, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 10px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .main-content {
+            margin-left: 80px;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .sidebar-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #9ca3af;
+        }
+        
+        .sidebar-btn:hover, .sidebar-btn.active {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(123, 44, 191, 0.2));
+            color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 60px;
+                bottom: 0;
+                top: auto;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 10px;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                margin-bottom: 70px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <canvas id="webgl-canvas"></canvas>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/index.html" class="sidebar-btn" title="Home">
+            <i class="fas fa-home text-xl"></i>
+        </a>
+        <a href="/dashboard.html" class="sidebar-btn" title="Dashboard">
+            <i class="fas fa-th-large text-xl"></i>
+        </a>
+        <div class="sidebar-btn active" title="AI Studio">
+            <i class="fas fa-robot text-xl"></i>
+        </div>
+        <div class="sidebar-btn" title="Settings">
+            <i class="fas fa-cog text-xl"></i>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Tool Tabs -->
+        <div class="tool-tabs mb-8 overflow-x-auto">
+            <div class="tool-tab active" data-tool="chat" onclick="switchTool('chat')">
+                <i class="fas fa-comments text-cyan-400"></i>
+                <span>AI Chat</span>
+            </div>
+            <div class="tool-tab" data-tool="image" onclick="switchTool('image')">
+                <i class="fas fa-image text-purple-400"></i>
+                <span>AI Image</span>
+            </div>
+            <div class="tool-tab" data-tool="code" onclick="switchTool('code')">
+                <i class="fas fa-code text-pink-400"></i>
+                <span>AI Code</span>
+            </div>
+            <div class="tool-tab" data-tool="website" onclick="switchTool('website')">
+                <i class="fas fa-globe text-green-400"></i>
+                <span>AI Website</span>
+            </div>
+            <div class="tool-tab" data-tool="prompt" onclick="switchTool('prompt')">
+                <i class="fas fa-wand-magic-sparkles text-yellow-400"></i>
+                <span>Prompt Studio</span>
+            </div>
+        </div>
+
+        <!-- AI Chat -->
+        <section id="chatTool" class="tool-section">
+            <div class="glass rounded-3xl overflow-hidden neon-border h-[calc(100vh-180px)]">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message ai">
+                            <div class="message-avatar gradient-bg">
+                                <i class="fas fa-robot text-cyan-400"></i>
+                            </div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI assistant. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-area">
+                        <div class="input-wrapper">
+                            <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="handleChatKeypress(event)">
+                            <button class="glow-btn" onclick="sendChatMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Image -->
+        <section id="imageTool" class="tool-section hidden">
+            <div class="glass rounded-3xl p-8 neon-border">
+                <h2 class="text-2xl font-bold mb-6">AI Image Generator</h2>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">Describe your image</label>
+                    <textarea id="imagePrompt" rows="4" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400" placeholder="A futuristic city with neon lights at night, cyberpunk style, detailed..."></textarea>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">Image Size</label>
+                    <select id="imageSize" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400">
+                        <option value="1024x1024">Square (1024x1024)</option>
+                        <option value="1024x1792">Portrait (1024x1792)</option>
+                        <option value="1792x1024">Landscape (1792x1024)</option>
+                    </select>
+                </div>
+                
+                <button onclick="generateImage()" class="glow-btn px-8 py-4 rounded-xl font-semibold flex items-center gap-3">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Generate Image
+                </button>
+                
+                <div id="imageResult" class="mt-8 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Generated Image</h3>
+                    <div class="image-result glass">
+                        <img id="generatedImage" src="" alt="Generated Image">
+                    </div>
+                    <div class="mt-4 flex gap-4">
+                        <button onclick="downloadImage()" class="px-6 py-2 rounded-xl glass hover:bg-white/10">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </button>
+                        <button onclick="regenerateImage()" class="px-6 py-2 rounded-xl glass hover:bg-white/10">
+                            <i class="fas fa-redo mr-2"></i>Regenerate
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="imageLoading" class="mt-8 hidden text-center">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Generating your image...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Code -->
+        <section id="codeTool" class="tool-section hidden">
+            <div class="glass rounded-3xl p-8 neon-border">
+                <h2 class="text-2xl font-bold mb-6">AI Code Generator</h2>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">What code do you need?</label>
+                    <textarea id="codePrompt" rows="4" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400" placeholder="Write a Python function to calculate fibonacci numbers with memoization..."></textarea>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">Programming Language</label>
+                    <select id="codeLanguage" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="html">HTML/CSS</option>
+                    </select>
+                </div>
+                
+                <button onclick="generateCode()" class="glow-btn px-8 py-4 rounded-xl font-semibold flex items-center gap-3">
+                    <i class="fas fa-code"></i>
+                    Generate Code
+                </button>
+                
+                <div id="codeResult" class="mt-8 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Generated Code</h3>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode()">Copy</button>
+                        <pre id="generatedCode"></pre>
+                    </div>
+                </div>
+                
+                <div id="codeLoading" class="mt-8 hidden text-center">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Generating code...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Website -->
+        <section id="websiteTool" class="tool-section hidden">
+            <div class="glass rounded-3xl p-8 neon-border">
+                <h2 class="text-2xl font-bold mb-6">AI Website Builder</h2>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">Describe your website</label>
+                    <textarea id="websitePrompt" rows="6" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400" placeholder="A modern portfolio website for a freelance developer with dark theme, featuring hero section with typing animation, project gallery with hover effects, contact form, and smooth scroll navigation..."></textarea>
+                </div>
+                
+                <button onclick="generateWebsite()" class="glow-btn px-8 py-4 rounded-xl font-semibold flex items-center gap-3">
+                    <i class="fas fa-globe"></i>
+                    Build Website
+                </button>
+                
+                <div id="websiteResult" class="mt-8 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Website Preview</h3>
+                    <div class="glass rounded-xl p-4 mb-4">
+                        <div id="websitePreview" class="prose prose-invert max-w-none"></div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="downloadWebsite()" class="glow-btn px-6 py-2 rounded-xl font-semibold">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="websiteLoading" class="mt-8 hidden text-center">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Building your website...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prompt Studio -->
+        <section id="promptTool" class="tool-section hidden">
+            <div class="glass rounded-3xl p-8 neon-border">
+                <h2 class="text-2xl font-bold mb-6">AI Prompt Studio</h2>
+                
+                <div class="prompt-type-selector">
+                    <button class="prompt-type-btn active" data-type="general" onclick="selectPromptType('general')">General</button>
+                    <button class="prompt-type-btn" data-type="image" onclick="selectPromptType('image')">Image</button>
+                    <button class="prompt-type-btn" data-type="code" onclick="selectPromptType('code')">Code</button>
+                    <button class="prompt-type-btn" data-type="writing" onclick="selectPromptType('writing')">Writing</button>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold mb-2">Your Prompt</label>
+                    <textarea id="promptInput" rows="4" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400" placeholder="Enter your prompt to optimize..."></textarea>
+                </div>
+                
+                <button onclick="optimizePrompt()" class="glow-btn px-8 py-4 rounded-xl font-semibold flex items-center gap-3">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Optimize Prompt
+                </button>
+                
+                <div id="promptResult" class="mt-8 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Optimized Prompt</h3>
+                    <div class="glass rounded-xl p-6">
+                        <p id="optimizedPrompt" class="text-gray-300"></p>
+                    </div>
+                    <button class="mt-4 px-6 py-2 rounded-xl glass hover:bg-white/10" onclick="copyPrompt()">
+                        <i class="fas fa-copy mr-2"></i>Copy
+                    </button>
+                </div>
+                
+                <div id="promptLoading" class="mt-8 hidden text-center">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Optimizing your prompt...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5BS_7xfD1-VhGYlBfkKLBkHUKnkZXBsg",
+            authDomain: "amkyawdev.firebaseapp.com",
+            projectId: "amkyawdev",
+            storageBucket: "amkyawdev.firebasestorage.app",
+            messagingSenderId: "242883286611",
+            appId: "1:242883286611:web:a61ea6d9d294c49b0618a6",
+            measurementId: "G-VF8XVGCWM2"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // Check auth
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = '/index.html';
+            } else {
+                const token = await user.getIdToken();
+                localStorage.setItem('firebaseToken', token);
+            }
+        });
+        
+        // WebGL Background
+        let scene, camera, renderer, particles;
+        
+        function initWebGL() {
+            const canvas = document.getElementById('webgl-canvas');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < 1500; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                vertices.push(x, y, z);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0x7b2cbf,
+                size: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            camera.position.z = 1000;
+            
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            particles.rotation.x += 0.0002;
+            particles.rotation.y += 0.0003;
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        initWebGL();
+        
+        // Tool switching
+        let currentTool = 'chat';
+        let currentPromptType = 'general';
+        
+        function switchTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tool === tool);
+            });
+            document.querySelectorAll('.tool-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(tool + 'Tool').classList.remove('hidden');
+            
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('feature', tool);
+            window.history.replaceState({}, '', url);
+        }
+        
+        function selectPromptType(type) {
+            currentPromptType = type;
+            document.querySelectorAll('.prompt-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === type);
+            });
+        }
+        
+        // Initialize from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const feature = urlParams.get('feature');
+        if (feature && ['chat', 'image', 'code', 'website', 'prompt'].includes(feature)) {
+            switchTool(feature);
+        }
+        
+        // Chat functions
+        function handleChatKeypress(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+        
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Add user message
+            addMessage('user', message);
+            input.value = '';
+            
+            // Show loading
+            const loadingId = addLoadingMessage();
+            
+            try {
+                // Mock AI response (in production, call your API)
+                const response = await mockAIChat(message);
+                
+                removeMessage(loadingId);
+                addMessage('ai', response);
+            } catch (error) {
+                removeMessage(loadingId);
+                addMessage('ai', 'Sorry, I encountered an error. Please try again.');
+            }
+        }
+        
+        function addMessage(sender, content) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.innerHTML = `
+                <div class="message-avatar ${sender === 'ai' ? 'gradient-bg' : 'glass'}">
+                    <i class="fas ${sender === 'ai' ? 'fa-robot text-cyan-400' : 'fa-user'}"></i>
+                </div>
+                <div class="message-content">
+                    <p>${content}</p>
+                </div>
+            `;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function addLoadingMessage() {
+            const messages = document.getElementById('chatMessages');
+            const id = 'loading-' + Date.now();
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = 'message ai';
+            div.innerHTML = `
+                <div class="message-avatar gradient-bg">
+                    <i class="fas fa-robot text-cyan-400"></i>
+                </div>
+                <div class="message-content">
+                    <div class="loading-spinner"></div>
+                </div>
+            `;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+            return id;
+        }
+        
+        function removeMessage(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+        
+        async function mockAIChat(message) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const responses = [
+                "I understand you're asking about \"" + message + "\". Let me help you with that.",
+                "That's an interesting question! Here's what I think about \"" + message + "\".",
+                "Based on your query about \"" + message + "\", here's some information that might help.",
+                "I'm analyzing your request about \"" + message + "\" and providing relevant insights."
+            ];
+            
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+        
+        // Image generation
+        async function generateImage() {
+            const prompt = document.getElementById('imagePrompt').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            document.getElementById('imageLoading').classList.remove('hidden');
+            document.getElementById('imageResult').classList.add('hidden');
+            
+            try {
+                // Mock image (in production, call your API)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Use placeholder image
+                document.getElementById('generatedImage').src = 'https://picsum.photos/512/512?random=' + Date.now();
+                document.getElementById('imageResult').classList.remove('hidden');
+            } catch (error) {
+                alert('Error generating image: ' + error.message);
+            } finally {
+                document.getElementById('imageLoading').classList.add('hidden');
+            }
+        }
+        
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = document.getElementById('generatedImage').src;
+            link.download = 'ai-image-' + Date.now() + '.jpg';
+            link.click();
+        }
+        
+        function regenerateImage() {
+            generateImage();
+        }
+        
+        // Code generation
+        async function generateCode() {
+            const prompt = document.getElementById('codePrompt').value.trim();
+            const language = document.getElementById('codeLanguage').value;
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            document.getElementById('codeLoading').classList.remove('hidden');
+            document.getElementById('codeResult').classList.add('hidden');
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                const mockCode = generateMockCode(language, prompt);
+                document.getElementById('generatedCode').textContent = mockCode;
+                document.getElementById('codeResult').classList.remove('hidden');
+            } catch (error) {
+                alert('Error generating code: ' + error.message);
+            } finally {
+                document.getElementById('codeLoading').classList.add('hidden');
+            }
+        }
+        
+        function generateMockCode(language, prompt) {
+            const codes = {
+                python: `# Python implementation for: ${prompt}
+from typing import List, Optional
+from functools import lru_cache
+
+class Solution:
+    def solve(self) -> Any:
+        # Implementation here
+        pass
+
+# Example usage
+if __name__ == "__main__":
+    solution = Solution()
+    result = solution.solve()
+    print(result)`,
+                
+                javascript: `// JavaScript implementation for: ${prompt}
+
+class Solution {
+    constructor() {
+        // Initialize
+    }
+    
+    solve() {
+        // Implementation here
+    }
+}
+
+// Example usage
+const solution = new Solution();
+const result = solution.solve();
+console.log(result);`,
+                
+                html: `<!-- HTML/CSS implementation for: ${prompt} -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Website</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: white;
+        }
+        
+        /* Add your styles here */
+    </style>
+</head>
+<body>
+    <!-- Add your content here -->
+</body>
+</html>`
+            };
+            
+            return codes[language] || codes.python;
+        }
+        
+        function copyCode() {
+            const code = document.getElementById('generatedCode').textContent;
+            navigator.clipboard.writeText(code);
+            alert('Code copied to clipboard!');
+        }
+        
+        // Website generation
+        async function generateWebsite() {
+            const prompt = document.getElementById('websitePrompt').value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a description');
+                return;
+            }
+            
+            document.getElementById('websiteLoading').classList.remove('hidden');
+            document.getElementById('websiteResult').classList.add('hidden');
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const websiteHTML = generateMockWebsite(prompt);
+                document.getElementById('websitePreview').innerHTML = websiteHTML;
+                document.getElementById('websiteResult').classList.remove('hidden');
+            } catch (error) {
+                alert('Error building website: ' + error.message);
+            } finally {
+                document.getElementById('websiteLoading').classList.add('hidden');
+            }
+        }
+        
+        function generateMockWebsite(description) {
+            return `
+                <div style="padding: 40px; text-align: center;">
+                    <h1 style="font-size: 2.5rem; margin-bottom: 20px;">Generated Website</h1>
+                    <p style="color: #9ca3af;">Based on: ${description.substring(0, 100)}...</p>
+                    <div style="margin-top: 40px; padding: 20px; background: rgba(0,240,255,0.1); border-radius: 12px;">
+                        <p>Website preview placeholder</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function downloadWebsite() {
+            const content = document.getElementById('websitePreview').innerHTML;
+            const blob = new Blob([content], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'website-' + Date.now() + '.html';
+            link.click();
+        }
+        
+        // Prompt optimization
+        async function optimizePrompt() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            document.getElementById('promptLoading').classList.remove('hidden');
+            document.getElementById('promptResult').classList.add('hidden');
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const optimized = `[Enhanced ${currentPromptType} prompt] ${prompt} 
+                
+Details to include:
+- Specific requirements
+- Target audience
+- Desired output format
+- Any constraints or limitations`;
+                
+                document.getElementById('optimizedPrompt').textContent = optimized;
+                document.getElementById('promptResult').classList.remove('hidden');
+            } catch (error) {
+                alert('Error optimizing prompt: ' + error.message);
+            } finally {
+                document.getElementById('promptLoading').classList.add('hidden');
+            }
+        }
+        
+        function copyPrompt() {
+            const prompt = document.getElementById('optimizedPrompt').textContent;
+            navigator.clipboard.writeText(prompt);
+            alert('Prompt copied to clipboard!');
+        }
+        
+        // GSAP animations
+        gsap.from('.tool-section', {
+            duration: 0.5,
+            opacity: 0,
+            y: 20,
+            ease: 'power3.out'
+        });
+    </script>
+</body>
+</html>

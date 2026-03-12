@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | OneHand AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --secondary: #7b2cbf;
+            --accent: #ff006e;
+            --dark: #0a0a0f;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+        }
+        
+        .glow-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transition: all 0.3s ease;
+        }
+        
+        .glow-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px var(--primary);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.2);
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(10, 10, 15, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            z-index: 40;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: #9ca3af;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        
+        .sidebar-link:hover, .sidebar-link.active {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--primary);
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .tool-card {
+            background: linear-gradient(135deg, rgba(123, 44, 191, 0.2), rgba(0, 240, 255, 0.2));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .tool-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+        
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 8px;
+            min-width: 200px;
+            z-index: 50;
+        }
+        
+        .dropdown-menu.show {
+            display: block;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <canvas id="webgl-canvas"></canvas>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="flex items-center gap-3 mb-10 px-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-cyan-400 to-purple-500 flex items-center justify-center">
+                <i class="fas fa-brain text-xl"></i>
+            </div>
+            <span class="text-xl font-bold">OneHand AI</span>
+        </div>
+        
+        <nav class="space-y-2">
+            <a href="/index.html" class="sidebar-link">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            
+            <div class="sidebar-link active" onclick="showSection('dashboard')">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </div>
+            
+            <div class="sidebar-link" onclick="showSection('ai-tools')">
+                <i class="fas fa-robot"></i>
+                <span>AI Tools</span>
+            </div>
+            
+            <div class="sidebar-link" onclick="showSection('projects')">
+                <i class="fas fa-folder-open"></i>
+                <span>Projects</span>
+            </div>
+            
+            <div class="sidebar-link relative" onclick="toggleDropdown('toolsDropdown')">
+                <i class="fas fa-magic"></i>
+                <span>AI Studio</span>
+                <i class="fas fa-chevron-right ml-auto text-xs"></i>
+            </div>
+            <div id="toolsDropdown" class="dropdown-menu ml-4">
+                <a href="/ai_studio.html?feature=chat" class="block px-4 py-2 rounded-lg hover:bg-white/10">💬 AI Chat</a>
+                <a href="/ai_studio.html?feature=image" class="block px-4 py-2 rounded-lg hover:bg-white/10">🖼️ AI Image</a>
+                <a href="/ai_studio.html?feature=code" class="block px-4 py-2 rounded-lg hover:bg-white/10">💻 AI Code</a>
+                <a href="/ai_studio.html?feature=website" class="block px-4 py-2 rounded-lg hover:bg-white/10">🌐 AI Website</a>
+                <a href="/ai_studio.html?feature=prompt" class="block px-4 py-2 rounded-lg hover:bg-white/10">✨ Prompt Studio</a>
+            </div>
+            
+            <div class="sidebar-link" onclick="showSection('history')">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+            </div>
+            
+            <div class="sidebar-link" onclick="showSection('settings')">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </div>
+        </nav>
+        
+        <div class="absolute bottom-6 left-4 right-4">
+            <div class="glass rounded-xl p-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div id="userAvatar" class="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 flex items-center justify-center">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div id="userName" class="font-semibold">Loading...</div>
+                        <div id="userEmail" class="text-xs text-gray-400">...</div>
+                    </div>
+                </div>
+                <button onclick="signOut()" class="w-full py-2 rounded-lg glass text-sm hover:bg-white/10 transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden p-2 rounded-lg glass" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-bold">Welcome back, <span id="userNameHeader">User</span></h1>
+                    <p class="text-gray-400">Ready to create something amazing?</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button class="p-3 rounded-xl glass hover:bg-white/10 transition">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <button class="p-3 rounded-xl glass hover:bg-white/10 transition">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section id="dashboardSection">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-comments text-xl text-cyan-400"></i>
+                        </div>
+                        <span class="text-green-400 text-sm">+12%</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">1,234</div>
+                    <div class="text-gray-400">AI Chats</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-image text-xl text-purple-400"></i>
+                        </div>
+                        <span class="text-green-400 text-sm">+8%</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">567</div>
+                    <div class="text-gray-400">Images Generated</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-code text-xl text-pink-400"></i>
+                        </div>
+                        <span class="text-green-400 text-sm">+15%</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">890</div>
+                    <div class="text-gray-400">Code Generated</div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-folder text-xl text-orange-400"></i>
+                        </div>
+                        <span class="text-green-400 text-sm">+5%</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-1">42</div>
+                    <div class="text-gray-400">Projects</div>
+                </div>
+            </div>
+
+            <!-- Quick Access -->
+            <h2 class="text-xl font-bold mb-4">Quick Access</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                <a href="/ai_studio.html?feature=chat" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-comments text-2xl text-cyan-400 mb-2"></i>
+                    <div class="text-sm font-semibold">AI Chat</div>
+                </a>
+                
+                <a href="/ai_studio.html?feature=image" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-image text-2xl text-purple-400 mb-2"></i>
+                    <div class="text-sm font-semibold">AI Image</div>
+                </a>
+                
+                <a href="/ai_studio.html?feature=code" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-code text-2xl text-pink-400 mb-2"></i>
+                    <div class="text-sm font-semibold">AI Code</div>
+                </a>
+                
+                <a href="/ai_studio.html?feature=website" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-globe text-2xl text-green-400 mb-2"></i>
+                    <div class="text-sm font-semibold">AI Website</div>
+                </a>
+                
+                <a href="/ai_studio.html?feature=prompt" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-wand-magic-sparkles text-2xl text-yellow-400 mb-2"></i>
+                    <div class="text-sm font-semibold">Prompt Studio</div>
+                </a>
+                
+                <a href="#projects" onclick="showSection('projects')" class="tool-card rounded-xl p-4 text-center card-hover">
+                    <i class="fas fa-folder-open text-2xl text-orange-400 mb-2"></i>
+                    <div class="text-sm font-semibold">Projects</div>
+                </a>
+            </div>
+
+            <!-- Recent Activity -->
+            <h2 class="text-xl font-bold mb-4">Recent Activity</h2>
+            <div class="glass rounded-2xl p-6 custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
+                <div id="recentActivity" class="space-y-4">
+                    <div class="flex items-center gap-4 p-3 rounded-xl glass">
+                        <div class="w-10 h-10 rounded-lg bg-cyan-400/20 flex items-center justify-center">
+                            <i class="fas fa-comments text-cyan-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold">AI Chat Session</div>
+                            <div class="text-sm text-gray-400">Generated code for a React component</div>
+                        </div>
+                        <div class="text-sm text-gray-500">2 min ago</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 p-3 rounded-xl glass">
+                        <div class="w-10 h-10 rounded-lg bg-purple-400/20 flex items-center justify-center">
+                            <i class="fas fa-image text-purple-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold">Image Generation</div>
+                            <div class="text-sm text-gray-400">Created a futuristic cityscape</div>
+                        </div>
+                        <div class="text-sm text-gray-500">15 min ago</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 p-3 rounded-xl glass">
+                        <div class="w-10 h-10 rounded-lg bg-pink-400/20 flex items-center justify-center">
+                            <i class="fas fa-code text-pink-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold">Code Generation</div>
+                            <div class="text-sm text-gray-400">Built a REST API with Python</div>
+                        </div>
+                        <div class="text-sm text-gray-500">1 hour ago</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Tools Section -->
+        <section id="aiToolsSection" class="hidden">
+            <h2 class="text-xl font-bold mb-6">AI Tools</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer" onclick="window.location.href='/ai_studio.html?feature=chat'">
+                    <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-comments text-3xl text-cyan-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Chat</h3>
+                    <p class="text-gray-400">Advanced conversational AI powered by GPT-4</p>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer" onclick="window.location.href='/ai_studio.html?feature=image'">
+                    <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-image text-3xl text-purple-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Image Generator</h3>
+                    <p class="text-gray-400">Create stunning images from text descriptions</p>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer" onclick="window.location.href='/ai_studio.html?feature=code'">
+                    <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-code text-3xl text-pink-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Code Generator</h3>
+                    <p class="text-gray-400">Generate clean, optimized code in any language</p>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer" onclick="window.location.href='/ai_studio.html?feature=website'">
+                    <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-globe text-3xl text-green-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Website Builder</h3>
+                    <p class="text-gray-400">Build complete websites from descriptions</p>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer" onclick="window.location.href='/ai_studio.html?feature=prompt'">
+                    <div class="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-wand-magic-sparkles text-3xl text-yellow-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Prompt Studio</h3>
+                    <p class="text-gray-400">Optimize and enhance your prompts</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projectsSection" class="hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Projects</h2>
+                <button onclick="openProjectModal()" class="glow-btn px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    New Project
+                </button>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid">
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer">
+                    <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-folder text-xl text-cyan-400"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">My First Project</h3>
+                    <p class="text-gray-400 text-sm mb-4">Web Application</p>
+                    <div class="flex items-center justify-between text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>Created 2 days ago</span>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer">
+                    <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-folder text-xl text-purple-400"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">AI Chatbot</h3>
+                    <p class="text-gray-400 text-sm mb-4">Python Application</p>
+                    <div class="flex items-center justify-between text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>Created 1 week ago</span>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-2xl p-6 card-hover cursor-pointer">
+                    <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4">
+                        <i class="fas fa-folder text-xl text-pink-400"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">Image Generator</h3>
+                    <p class="text-gray-400 text-sm mb-4">Web Application</p>
+                    <div class="flex items-center justify-between text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>Created 2 weeks ago</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="historySection" class="hidden">
+            <h2 class="text-xl font-bold mb-6">AI Request History</h2>
+            <div class="glass rounded-2xl p-6 custom-scrollbar" style="max-height: 600px; overflow-y: auto;">
+                <div id="historyList" class="space-y-4">
+                    <!-- History items will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settingsSection" class="hidden">
+            <h2 class="text-xl font-bold mb-6">Settings</h2>
+            <div class="glass rounded-2xl p-6 max-w-2xl">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Display Name</label>
+                        <input type="text" id="settingsName" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Email</label>
+                        <input type="email" id="settingsEmail" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400" disabled>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">API Keys</label>
+                        <input type="password" placeholder="Enter your OpenAI API Key" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400 mb-2">
+                        <input type="password" placeholder="Enter your Stability AI Key" class="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:border-cyan-400">
+                    </div>
+                    
+                    <button class="glow-btn px-6 py-3 rounded-xl font-semibold">
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Project Modal -->
+    <div id="projectModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop absolute inset-0" onclick="closeProjectModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 glass rounded-3xl p-8 w-full max-w-md">
+            <h3 class="text-2xl font-bold mb-6">Create New Project</h3>
+            <input type="text" id="projectName" placeholder="Project Name" class="w-full px-4 py-3 rounded-xl glass mb-4 focus:outline-none focus:border-cyan-400">
+            <select id="projectType" class="w-full px-4 py-3 rounded-xl glass mb-6 focus:outline-none focus:border-cyan-400">
+                <option value="web">Web Application</option>
+                <option value="mobile">Mobile Application</option>
+                <option value="ai">AI/ML Project</option>
+                <option value="api">API Development</option>
+                <option value="other">Other</option>
+            </select>
+            <button onclick="createProject()" class="w-full glow-btn py-3 rounded-xl font-semibold">
+                Create Project
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5BS_7xfD1-VhGYlBfkKLBkHUKnkZXBsg",
+            authDomain: "amkyawdev.firebaseapp.com",
+            projectId: "amkyawdev",
+            storageBucket: "amkyawdev.firebasestorage.app",
+            messagingSenderId: "242883286611",
+            appId: "1:242883286611:web:a61ea6d9d294c49b0618a6",
+            measurementId: "G-VF8XVGCWM2"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // Check auth state
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = '/index.html';
+            } else {
+                document.getElementById('userName').textContent = user.displayName || user.email.split('@')[0];
+                document.getElementById('userNameHeader').textContent = user.displayName || user.email.split('@')[0];
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('settingsName').value = user.displayName || '';
+                document.getElementById('settingsEmail').value = user.email;
+                
+                const token = await user.getIdToken();
+                localStorage.setItem('firebaseToken', token);
+            }
+        });
+        
+        // Sign out
+        async function signOut() {
+            await auth.signOut();
+            localStorage.removeItem('firebaseToken');
+            window.location.href = '/index.html';
+        }
+        
+        // WebGL Background
+        let scene, camera, renderer, particles;
+        let mouseX = 0, mouseY = 0;
+        
+        function initWebGL() {
+            const canvas = document.getElementById('webgl-canvas');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < 2000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                vertices.push(x, y, z);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.PointsMaterial({
+                color: 0x00f0ff,
+                size: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            camera.position.z = 1000;
+            
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            particles.rotation.x += 0.0003;
+            particles.rotation.y += 0.0002;
+            renderer.render(scene, camera);
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX - window.innerWidth / 2;
+            mouseY = e.clientY - window.innerHeight / 2;
+        });
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        initWebGL();
+        
+        // Section navigation
+        function showSection(section) {
+            const sections = ['dashboard', 'ai-tools', 'projects', 'history', 'settings'];
+            sections.forEach(s => {
+                document.getElementById(s + 'Section').classList.add('hidden');
+            });
+            document.getElementById(section + 'Section').classList.remove('hidden');
+            
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.closest('.sidebar-link').classList.add('active');
+        }
+        
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+        
+        function toggleDropdown(id) {
+            document.getElementById(id).classList.toggle('show');
+        }
+        
+        function openProjectModal() {
+            document.getElementById('projectModal').classList.remove('hidden');
+        }
+        
+        function closeProjectModal() {
+            document.getElementById('projectModal').classList.add('hidden');
+        }
+        
+        async function createProject() {
+            const name = document.getElementById('projectName').value;
+            const type = document.getElementById('projectType').value;
+            
+            if (!name) {
+                alert('Please enter a project name');
+                return;
+            }
+            
+            // Create project in UI (would connect to backend in production)
+            const projectsGrid = document.getElementById('projectsGrid');
+            const newProject = document.createElement('div');
+            newProject.className = 'glass rounded-2xl p-6 card-hover cursor-pointer';
+            newProject.innerHTML = `
+                <div class="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center mb-4">
+                    <i class="fas fa-folder text-xl text-cyan-400"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">${name}</h3>
+                <p class="text-gray-400 text-sm mb-4">${type}</p>
+                <div class="flex items-center justify-between text-sm text-gray-500">
+                    <span><i class="fas fa-clock mr-1"></i>Created just now</span>
+                </div>
+            `;
+            projectsGrid.appendChild(newProject);
+            
+            closeProjectModal();
+            document.getElementById('projectName').value = '';
+        }
+        
+        // GSAP animations
+        gsap.from('.glass.rounded-2xl', {
+            duration: 0.6,
+            y: 20,
+            opacity: 0,
+            stagger: 0.1,
+            ease: 'power3.out'
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dashboard | AI Power Platform</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="dashboard-body">
+    <!-- WebGL Background -->
+    <canvas id="webgl-bg"></canvas>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-brand">
+                <i class="fas fa-brain"></i>
+                <span>AI POWER</span>
+            </a>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Main</span>
+                <a href="dashboard.html" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">AI Tools</span>
+                <a href="dashboard.html?tool=chat" class="nav-item" data-page="chat">
+                    <i class="fas fa-comments"></i>
+                    <span>AI Chat</span>
+                </a>
+                <a href="dashboard.html?tool=image" class="nav-item" data-page="image">
+                    <i class="fas fa-image"></i>
+                    <span>Image Generator</span>
+                </a>
+                <a href="dashboard.html?tool=code" class="nav-item" data-page="code">
+                    <i class="fas fa-code"></i>
+                    <span>Code Generator</span>
+                </a>
+                <a href="dashboard.html?tool=website" class="nav-item" data-page="website">
+                    <i class="fas fa-globe"></i>
+                    <span>Website Builder</span>
+                </a>
+                <a href="dashboard.html?tool=prompt" class="nav-item" data-page="prompt">
+                    <i class="fas fa-pen-fancy"></i>
+                    <span>Prompt Studio</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Projects</span>
+                <a href="dashboard.html?tool=projects" class="nav-item" data-page="projects">
+                    <i class="fas fa-folder"></i>
+                    <span>My Projects</span>
+                </a>
+            </div>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="dashboard.html?tool=settings" class="nav-item" data-page="settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <button class="nav-item" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="topbar-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search tools, projects...">
+            </div>
+            
+            <div class="topbar-actions">
+                <button class="icon-btn" id="notificationBtn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-dot"></span>
+                </button>
+                
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" id="userAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="user-name" id="userName">Guest</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content" id="pageContent">
+            <!-- Dashboard Home -->
+            <div class="page active" id="dashboardPage">
+                <div class="page-header">
+                    <h1>Welcome Back</h1>
+                    <p>What would you like to create today?</p>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <a href="dashboard.html?tool=chat" class="quick-action-card">
+                        <div class="action-icon chat">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <span>AI Chat</span>
+                    </a>
+                    <a href="dashboard.html?tool=image" class="quick-action-card">
+                        <div class="action-icon image">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        <span>Generate Image</span>
+                    </a>
+                    <a href="dashboard.html?tool=code" class="quick-action-card">
+                        <div class="action-icon code">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <span>Write Code</span>
+                    </a>
+                    <a href="dashboard.html?tool=website" class="quick-action-card">
+                        <div class="action-icon website">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <span>Build Website</span>
+                    </a>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="recent-section">
+                    <h2>Recent Activity</h2>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h4>Generated Image</h4>
+                                <p>Cyberpunk cityscape at night</p>
+                                <span class="activity-time">2 hours ago</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h4>Code Generated</h4>
+                                <p>Python REST API endpoints</p>
+                                <span class="activity-time">5 hours ago</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <div class="activity-content">
+                                <h4>Chat Conversation</h4>
+                                <p>About machine learning optimization</p>
+                                <span class="activity-time">Yesterday</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Chat Page -->
+            <div class="page" id="chatPage">
+                <div class="page-header">
+                    <h1>AI Chat</h1>
+                    <p>Have a conversation with advanced AI</p>
+                </div>
+                
+                <div class="ai-chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message bot">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI assistant. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <div class="chat-input-wrapper">
+                            <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
+                            <button class="send-btn" id="sendChatBtn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Image Page -->
+            <div class="page" id="imagePage">
+                <div class="page-header">
+                    <h1>AI Image Generator</h1>
+                    <p>Create stunning images from text descriptions</p>
+                </div>
+                
+                <div class="ai-tool-container">
+                    <div class="tool-input-section">
+                        <div class="input-group">
+                            <label>Describe your image</label>
+                            <textarea id="imagePrompt" placeholder="A futuristic city with neon lights at night, cyberpunk style, highly detailed..."></textarea>
+                        </div>
+                        
+                        <div class="input-options">
+                            <div class="option-group">
+                                <label>Size</label>
+                                <select id="imageSize">
+                                    <option value="1024x1024">Square (1024x1024)</option>
+                                    <option value="1024x1792">Portrait (1024x1792)</option>
+                                    <option value="1792x1024">Landscape (1792x1024)</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Style</label>
+                                <select id="imageStyle">
+                                    <option value="natural">Natural</option>
+                                    <option value="vivid">Vivid</option>
+                                    <option value="artistic">Artistic</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-primary btn-lg" id="generateImageBtn">
+                            <i class="fas fa-magic"></i>
+                            Generate Image
+                        </button>
+                    </div>
+                    
+                    <div class="tool-output-section">
+                        <div class="output-placeholder" id="imageOutput">
+                            <i class="fas fa-image"></i>
+                            <p>Your generated image will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Code Page -->
+            <div class="page" id="codePage">
+                <div class="page-header">
+                    <h1>AI Code Generator</h1>
+                    <p>Generate clean, efficient code in seconds</p>
+                </div>
+                
+                <div class="ai-tool-container">
+                    <div class="tool-input-section">
+                        <div class="input-group">
+                            <label>Describe what you want to build</label>
+                            <textarea id="codePrompt" placeholder="Create a Python function that calculates fibonacci numbers with memoization..."></textarea>
+                        </div>
+                        
+                        <div class="input-options">
+                            <div class="option-group">
+                                <label>Language</label>
+                                <select id="codeLanguage">
+                                    <option value="python">Python</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="typescript">TypeScript</option>
+                                    <option value="java">Java</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="go">Go</option>
+                                    <option value="rust">Rust</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Framework</label>
+                                <select id="codeFramework">
+                                    <option value="">None</option>
+                                    <option value="react">React</option>
+                                    <option value="vue">Vue</option>
+                                    <option value="angular">Angular</option>
+                                    <option value="django">Django</option>
+                                    <option value="flask">Flask</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-primary btn-lg" id="generateCodeBtn">
+                            <i class="fas fa-code"></i>
+                            Generate Code
+                        </button>
+                    </div>
+                    
+                    <div class="tool-output-section">
+                        <div class="code-output" id="codeOutput">
+                            <div class="code-header">
+                                <span class="code-language">Python</span>
+                                <button class="copy-btn">
+                                    <i class="fas fa-copy"></i>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code id="codeBlock">// Your generated code will appear here</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Website Builder Page -->
+            <div class="page" id="websitePage">
+                <div class="page-header">
+                    <h1>AI Website Builder</h1>
+                    <p>Build complete websites from descriptions</p>
+                </div>
+                
+                <div class="ai-tool-container">
+                    <div class="tool-input-section">
+                        <div class="input-group">
+                            <label>Describe your website</label>
+                            <textarea id="websitePrompt" placeholder="Create a personal portfolio website with a dark theme, featuring hero section, about me, projects gallery, and contact form..."></textarea>
+                        </div>
+                        
+                        <div class="input-options">
+                            <div class="option-group">
+                                <label>Type</label>
+                                <select id="websiteType">
+                                    <option value="portfolio">Portfolio</option>
+                                    <option value="business">Business</option>
+                                    <option value="blog">Blog</option>
+                                    <option value="ecommerce">E-commerce</option>
+                                    <option value="landing">Landing Page</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Tech Stack</label>
+                                <select id="websiteStack">
+                                    <option value="html">HTML/CSS</option>
+                                    <option value="react">React</option>
+                                    <option value="vue">Vue</option>
+                                    <option value="nextjs">Next.js</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-primary btn-lg" id="generateWebsiteBtn">
+                            <i class="fas fa-globe"></i>
+                            Build Website
+                        </button>
+                    </div>
+                    
+                    <div class="tool-output-section">
+                        <div class="website-preview" id="websitePreview">
+                            <div class="preview-header">
+                                <div class="preview-dots">
+                                    <span></span><span></span><span></span>
+                                </div>
+                                <span class="preview-url">preview.html</span>
+                            </div>
+                            <iframe id="websiteFrame" title="Website Preview"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prompt Studio Page -->
+            <div class="page" id="promptPage">
+                <div class="page-header">
+                    <h1>Prompt Studio</h1>
+                    <p>Optimize and refine your AI prompts</p>
+                </div>
+                
+                <div class="ai-tool-container">
+                    <div class="tool-input-section">
+                        <div class="input-group">
+                            <label>Your prompt</label>
+                            <textarea id="promptInput" placeholder="Enter your prompt to optimize..."></textarea>
+                        </div>
+                        
+                        <div class="prompt-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="addContext" checked>
+                                Add context
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="addExamples" checked>
+                                Include examples
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="addFormat">
+                                Specify output format
+                            </label>
+                        </div>
+                        
+                        <button class="btn-primary btn-lg" id="optimizePromptBtn">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                            Optimize Prompt
+                        </button>
+                    </div>
+                    
+                    <div class="tool-output-section">
+                        <div class="prompt-output" id="promptOutput">
+                            <div class="output-header">
+                                <span>Optimized Prompt</span>
+                                <button class="copy-btn">
+                                    <i class="fas fa-copy"></i>
+                                    Copy
+                                </button>
+                            </div>
+                            <div class="optimized-prompt" id="optimizedPrompt">
+                                Your optimized prompt will appear here...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projects Page -->
+            <div class="page" id="projectsPage">
+                <div class="page-header">
+                    <h1>My Projects</h1>
+                    <p>Manage your AI projects</p>
+                </div>
+                
+                <div class="projects-toolbar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search projects...">
+                    </div>
+                    <button class="btn-primary" id="newProjectBtn">
+                        <i class="fas fa-plus"></i>
+                        New Project
+                    </button>
+                </div>
+                
+                <div class="projects-grid">
+                    <div class="project-card">
+                        <div class="project-thumb">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        <div class="project-info">
+                            <h4>Cyberpunk Art Collection</h4>
+                            <p>12 images • Last updated 2h ago</p>
+                        </div>
+                    </div>
+                    <div class="project-card">
+                        <div class="project-thumb">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div class="project-info">
+                            <h4>API Utilities</h4>
+                            <p>8 files • Last updated yesterday</p>
+                        </div>
+                    </div>
+                    <div class="project-card">
+                        <div class="project-thumb">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="project-info">
+                            <h4>Portfolio Website</h4>
+                            <p>5 pages • Last updated 3 days ago</p>
+                        </div>
+                    </div>
+                    <div class="project-card add-new">
+                        <i class="fas fa-plus"></i>
+                        <span>New Project</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="settingsPage">
+                <div class="page-header">
+                    <h1>Settings</h1>
+                    <p>Manage your account and preferences</p>
+                </div>
+                
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <h3>Profile</h3>
+                        <div class="setting-item">
+                            <label>Display Name</label>
+                            <input type="text" value="User" class="setting-input">
+                        </div>
+                        <div class="setting-item">
+                            <label>Email</label>
+                            <input type="email" value="user@example.com" class="setting-input">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Preferences</h3>
+                        <div class="setting-item">
+                            <label>Theme</label>
+                            <select class="setting-input">
+                                <option>Dark</option>
+                                <option>Light</option>
+                                <option>System</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Default AI Model</label>
+                            <select class="setting-input">
+                                <option>GPT-4</option>
+                                <option>GPT-3.5</option>
+                                <option>Claude</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav" id="bottomNav">
+        <a href="dashboard.html" class="bottom-nav-item active">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="dashboard.html?tool=chat" class="bottom-nav-item">
+            <i class="fas fa-comments"></i>
+            <span>Chat</span>
+        </a>
+        <a href="dashboard.html?tool=image" class="bottom-nav-item">
+            <i class="fas fa-image"></i>
+            <span>Image</span>
+        </a>
+        <a href="dashboard.html?tool=code" class="bottom-nav-item">
+            <i class="fas fa-code"></i>
+            <span>Code</span>
+        </a>
+        <a href="dashboard.html?tool=projects" class="bottom-nav-item">
+            <i class="fas fa-folder"></i>
+            <span>Projects</span>
+        </a>
+    </nav>
+
+    <!-- Scripts -->
+    <script src="config/firebase.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/ai_engine.js"></script>
+    <script src="js/firebase_auth.js"></script>
+    <script src="js/ui_effects.js"></script>
+    <script src="js/app.js"></script>
+    <script src="webgl/galaxy_background.js"></script>
+</body>
+</html>
